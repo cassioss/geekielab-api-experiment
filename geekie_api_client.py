@@ -26,7 +26,7 @@ class GeekieAPIClient:
         )
 
         if not response.status_code == 200:
-            return { "organization_id": "Dont have one" }
+            return { "organization_id": "Does not have one" }
 
         return response.json()
 
