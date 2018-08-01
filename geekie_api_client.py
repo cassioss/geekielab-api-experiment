@@ -75,6 +75,30 @@ class GeekieAPIClient:
 
         return response.json()
 
+    def update_tag_by_id(self, organization_id, tag_id, name, deleted=None):
+        url = "PUT /organizations/{}/tags/{}".format(organization_id, tag_id)
+
+        request_body = {
+            "name": name,
+            "deleted": deleted,
+        }
+
+        headers = self._get_authenticated_headers(url, request_body)
+        response = requests.put(
+            "{}/organizations/{}/tags/{}".format(
+                self.base_url,
+                organization_id,
+                tag_id,
+            ),
+            headers=headers,
+            data=json.dumps(request_body)
+        )
+
+        if not response.status_code == 200 and not response.status_code == 201:
+            return {}
+
+        return response.json()
+
     def get_all_memberships(self, organization_id):
         url = "GET /organizations/{}/members/list?limit=200".format(organization_id)
 
@@ -201,7 +225,7 @@ class GeekieAPIClient:
             data=json.dumps(request_body)
         )
 
-        if not response.status_code == 200 or not response.status_code == 201:
+        if not response.status_code == 200 and not response.status_code == 201:
             return {}
 
         return response.json()
@@ -243,7 +267,7 @@ class GeekieAPIClient:
             data=json.dumps(request_body)
         )
 
-        if not response.status_code == 200 or not response.status_code == 201:
+        if not response.status_code == 200 and not response.status_code == 201:
             return {}
 
         return response.json()
@@ -282,7 +306,30 @@ class GeekieAPIClient:
             data=json.dumps(request_body)
         )
 
-        if not response.status_code == 200 or not response.status_code == 201:
+        if not response.status_code == 200 and not response.status_code == 201:
             return {}
 
         return response.json()
+
+	# Most endpoints were doing this authentication to build their headers, so isolating it to a
+    # separate method seemed handy.
+    def _get_authenticated_headers(self, url, request_body=None):
+        current_time = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+        body_as_json = json.dumps(request_body) if request_body else ""
+        digest = hashlib.sha1(body_as_json).hexdigest()
+
+        request_representation = url + "\n" + current_time + "\n" + digest + "\n"
+        signed_request = hmac.new(
+            self.shared_secret,
+            request_representation,
+            hashlib.sha1
+        ).hexdigest()
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Geekie-Requested-At": current_time,
+            "X-Geekie-Signature": signed_request
+        }
+
+        return headers
